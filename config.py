@@ -5,7 +5,7 @@ DATABASE_PATH = "./data/hpd_arrests.db"
 SCHEDULE_TIMES = ["05:15", "11:15", "17:15", "23:15"]
 TIMEZONE = "Pacific/Honolulu"
 
-USER_AGENT = "Mozilla/5.0 (compatible; HPD-Archival-Project/1.0; +https://github.com/hpd-archival)"
+USER_AGENT = "Mozilla/5.0 (compatible; HPD-Archival-Project/1.0; +https://github.com/alston808/hpd)"
 
 PDF_FILENAME_PATTERN = r"(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})_Arrest_Log\.pdf"
 

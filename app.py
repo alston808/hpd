@@ -8,6 +8,8 @@ from src.fetcher import HPDFetcher
 from src.parser import PDFParser
 from src.database import Database
 from src.scheduler import Scheduler
+from src.statutes import get_statute_text
+from src.mugshots import get_lookup_buttons
 
 
 st.markdown(
@@ -65,6 +67,132 @@ st.markdown(
         background-color: rgba(233, 69, 96, 0.1) !important;
     }
     
+    /* Tooltip for offense codes */
+    .offense-cell {
+        position: relative;
+        cursor: pointer;
+        border-bottom: 1px dashed #e94560;
+    }
+    .offense-cell:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+    .tooltip {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #e94560;
+        font-size: 0.85em;
+        white-space: nowrap;
+        z-index: 1000;
+        transition: opacity 0.2s, visibility 0.2s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        margin-bottom: 5px;
+    }
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #e94560;
+    }
+    .tooltip-code {
+        font-weight: bold;
+        color: #e94560;
+    }
+    
+    /* Statute tooltip - wider for law text */
+    .statute-cell {
+        position: relative;
+        cursor: help;
+        display: inline-block;
+    }
+    .statute-cell:hover .statute-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+    .statute-tooltip {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #e94560;
+        font-size: 0.8em;
+        max-width: 450px;
+        width: max-content;
+        z-index: 1000;
+        transition: opacity 0.2s, visibility 0.2s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
+        line-height: 1.4;
+        text-align: left;
+    }
+    .statute-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 8px solid transparent;
+        border-top-color: #e94560;
+    }
+    .statute-tooltip-text {
+        color: #ccc;
+        font-style: italic;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+    
+    /* Lookup buttons for external inmate search */
+    .lookup-buttons {
+        display: flex;
+        gap: 4px;
+    }
+    .lookup-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75em;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+    .lookup-btn:hover {
+        transform: scale(1.05);
+    }
+    .vinelink-btn {
+        background: #2563eb;
+        color: white;
+    }
+    .vinelink-btn:hover {
+        background: #1d4ed8;
+    }
+    .jailexchange-btn {
+        background: #059669;
+        color: white;
+    }
+    .jailexchange-btn:hover {
+        background: #047857;
+    }
+    
     /* Custom scrollbar */
     ::-webkit-scrollbar {
         width: 8px;
@@ -99,6 +227,37 @@ st.markdown(
         padding: 15px;
         border-radius: 8px;
         margin: 10px 0;
+    }
+    
+    /* Sidebar styles */
+    .sidebar-logo {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #333;
+        margin-bottom: 20px;
+    }
+    .sidebar-logo-text {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #e94560;
+    }
+    .sidebar-subtitle {
+        color: #a0a0a0;
+        font-size: 0.85em;
+        margin-top: 5px;
+    }
+    .sidebar-disclaimer {
+        background: rgba(233, 69, 96, 0.1);
+        border: 1px solid #e94560;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 0.75em;
+        color: #a0a0a0;
+        margin-top: auto;
+        line-height: 1.4;
+    }
+    .sidebar-disclaimer strong {
+        color: #e94560;
     }
 </style>
 """,
@@ -177,7 +336,7 @@ def get_race_color(race):
     return colors.get(race, "color: #9e9e9e;")
 
 
-def style_dataframe(df, display_cols):
+def style_dataframe(df, display_cols, offense_codes=None):
     if df.empty:
         return df
 
@@ -208,6 +367,33 @@ def style_dataframe(df, display_cols):
                     else "—"
                 )
             )
+        elif col == "offense_description" and offense_codes is not None:
+            styled[col] = styled[col].apply(
+                lambda x: (
+                    f'<div class="offense-cell">{x}<span class="tooltip">Code: <span class="tooltip-code">{offense_codes.get(x, "N/A")}</span></span></div>'
+                    if pd.notna(x)
+                    else "—"
+                )
+            )
+        elif col == "statute_code":
+            statute_texts = {
+                code: get_statute_text(code)
+                for code in styled[col].unique()
+                if pd.notna(code)
+            }
+            styled[col] = styled[col].apply(
+                lambda x: (
+                    (law_text := statute_texts.get(x))
+                    and (
+                        f'<div class="statute-cell"><span style="color: #e94560; font-weight: bold; background: rgba(233, 69, 96, 0.15); padding: 2px 8px; border-radius: 4px;">{x}</span>'
+                        f'<span class="statute-tooltip"><strong>Law Text:</strong><br><span class="statute-tooltip-text">{law_text}</span></span></div>'
+                    )
+                    if pd.notna(x)
+                    else "—"
+                )
+            )
+        elif col == "lookup":
+            pass
 
     return styled
 
@@ -320,6 +506,36 @@ def main():
 
     init_session_state()
 
+    with st.sidebar:
+        st.markdown(
+            '<div class="sidebar-logo">'
+            '<div class="sidebar-logo-text">🚔 HPD</div>'
+            '<div class="sidebar-subtitle">Arrest Log Archive</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("#### Support")
+        if st.button("🐛 Report Bug / Tech Issue", use_container_width=True):
+            st.link_button(
+                "Open GitHub Issues",
+                "https://github.com/alston808/hpd/issues/new",
+                use_container_width=True,
+            )
+
+        st.divider()
+
+        st.markdown(
+            '<div class="sidebar-disclaimer">'
+            "<strong>Disclaimer:</strong><br>"
+            "This site is not affiliated with, endorsed by, or "
+            "in any way officially connected to the Honolulu Police Department (HPD). "
+            "All arrest data is sourced from publicly available HPD press releases. "
+            "This is an independent archival project."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
     st.title("🚔 HPD Arrest Log Archival System")
     st.markdown("---")
 
@@ -410,6 +626,11 @@ def main():
         recent_df = st.session_state.db.get_recent_arrests(20)
 
         if not recent_df.empty:
+            offense_codes = dict(
+                zip(recent_df["offense_description"], recent_df["statute_code"])
+            )
+            recent_df = recent_df.copy()
+            recent_df["lookup"] = recent_df["full_name"].apply(get_lookup_buttons)
             display_cols = [
                 "full_name",
                 "age_at_arrest",
@@ -418,9 +639,11 @@ def main():
                 "arrest_timestamp",
                 "location",
                 "offense_description",
+                "statute_code",
                 "bail_amount",
+                "lookup",
             ]
-            display_df = style_dataframe(recent_df, display_cols)
+            display_df = style_dataframe(recent_df, display_cols, offense_codes)
 
             st.write(
                 display_df.to_html(escape=False, index=False), unsafe_allow_html=True
@@ -616,7 +839,8 @@ def main():
                                     f'<span style="{gender_color}">Gender: {row.get("gender", "N/A")}</span> | '
                                     f"Age: {row.get('age_at_arrest', 'N/A')} | "
                                     f'<span style="{race_color}">Race: {row.get("race_ethnicity", "N/A")}</span> | '
-                                    f"Arrests: **{row.get('arrest_count', 0)}**"
+                                    f"Arrests: **{row.get('arrest_count', 0)}**",
+                                    unsafe_allow_html=True,
                                 )
                                 if pd.notna(row.get("last_arrest")):
                                     st.caption(
@@ -675,7 +899,8 @@ def main():
                             f'<span style="{gender_color}">Gender: {row.get("gender", "N/A")}</span> | '
                             f"Age: {row.get('age_at_arrest', 'N/A')} | "
                             f'<span style="{race_color}">Race: {row.get("race_ethnicity", "N/A")}</span> | '
-                            f"Total Arrests: **{row.get('arrest_count', 0)}**"
+                            f"Total Arrests: **{row.get('arrest_count', 0)}**",
+                            unsafe_allow_html=True,
                         )
                         if pd.notna(row.get("last_arrest")):
                             st.caption(
