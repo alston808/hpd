@@ -469,7 +469,12 @@ def main():
 
         st.markdown("---")
 
-        if st.button("🔄 Fetch & Sync Now", type="primary", use_container_width=True):
+        if st.button(
+            "🔄 Fetch & Sync Now",
+            type="primary",
+            use_container_width=True,
+            key="fetch_sync_btn",
+        ):
             with st.spinner("Running sync..."):
                 run_full_sync()
             st.rerun()
@@ -490,7 +495,12 @@ def main():
         start_date = col1.date_input("Start Date", min_date)
         end_date = col2.date_input("End Date", datetime.now())
 
-        if st.button("🔍 Search", use_container_width=True, type="primary"):
+        if st.button(
+            "🔍 Search",
+            use_container_width=True,
+            type="primary",
+            key="date_range_search_btn",
+        ):
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
@@ -529,7 +539,12 @@ def main():
             help="Path to directory containing HPD arrest log PDFs",
         )
 
-        if st.button("📥 Import PDFs", type="primary", use_container_width=True):
+        if st.button(
+            "📥 Import PDFs",
+            type="primary",
+            use_container_width=True,
+            key="import_pdfs_btn",
+        ):
             import_historical_pdfs(Path(import_path))
             st.rerun()
 
@@ -566,7 +581,12 @@ def main():
                 "Last Name (partial)", "", placeholder="e.g., Smith"
             )
 
-            if st.button("🔍 Search", use_container_width=True, type="primary"):
+            if st.button(
+                "🔍 Search",
+                use_container_width=True,
+                type="primary",
+                key="search_by_name_btn",
+            ):
                 if search_first or search_last:
                     results = st.session_state.db.search_by_name(
                         search_first, search_last
@@ -708,7 +728,10 @@ def main():
 
         with col2:
             if st.button(
-                "🧹 Clean Duplicates Now", type="primary", use_container_width=True
+                "🧹 Clean Duplicates Now",
+                type="primary",
+                use_container_width=True,
+                key="clean_duplicates_btn",
             ):
                 if dup_count > 0:
                     removed, names = db.remove_duplicates(dry_run=False)
@@ -719,7 +742,10 @@ def main():
 
         with col3:
             if st.button(
-                "🔄 Refresh Stats", type="secondary", use_container_width=True
+                "🔄 Refresh Stats",
+                type="secondary",
+                use_container_width=True,
+                key="refresh_stats_btn",
             ):
                 st.rerun()
 
@@ -747,7 +773,10 @@ def main():
                         st.caption(f"... and {len(cleanup_info['removed']) - 10} more")
 
                 if st.button(
-                    "🗑️ Delete Old PDFs", type="secondary", use_container_width=True
+                    "🗑️ Delete Old PDFs",
+                    type="secondary",
+                    use_container_width=True,
+                    key="delete_old_pdfs_btn",
                 ):
                     db.cleanup_old_pdfs(pdf_dir, dry_run=False)
                     st.success(f"Deleted {len(cleanup_info['removed'])} old PDFs")
